@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strings"
 	"cmp"
 	"crypto/tls"
 	"fmt"
@@ -30,7 +29,6 @@ func main() {
 		AuthKey:      cfg.TSAuthKey,
 		RunWebClient: false,
 		Ephemeral:    false,
-		AdvertiseTags: splitTags(cfg.TSAdvertiseTags),
 		ControlURL:   cfg.TSLoginServer,
 		UserLogf: func(format string, v ...any) {
 			logger.Stdout.Info(fmt.Sprintf(format, v...))
@@ -120,15 +118,4 @@ func main() {
 			}
 		}()
 	}
-}
-
-// splitTags turns "tag:a,tag:b" into a slice; empty input gives nil (no tags advertised).
-func splitTags(v string) []string {
-	var out []string
-	for _, t := range strings.Split(v, ",") {
-		if t = strings.TrimSpace(t); t != "" {
-			out = append(out, t)
-		}
-	}
-	return out
 }
