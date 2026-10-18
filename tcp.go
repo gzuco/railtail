@@ -26,6 +26,10 @@ func fwdTCP(lstConn net.Conn, ts *tsnet.Server, targetAddr string) error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
+		// Quando il client chiude (EOF), chiudiamo anche l'upstream: altrimenti
+		// l'altra io.Copy resta bloccata in lettura e la connessione verso il
+		// target rimane aperta per sempre (orfana). Vedi RILASCIO_RAILTAIL_FIX.md.
+		defer tsConn.Close()
 		if _, err := io.Copy(tsConn, lstConn); err != nil {
 			return fmt.Errorf("failed to copy data to tailscale node: %w", err)
 		}
@@ -34,6 +38,8 @@ func fwdTCP(lstConn net.Conn, ts *tsnet.Server, targetAddr string) error {
 	})
 
 	g.Go(func() error {
+		// Simmetrico: se il target chiude, chiudiamo il client.
+		defer lstConn.Close()
 		if _, err := io.Copy(lstConn, tsConn); err != nil {
 			return fmt.Errorf("failed to copy data from tailscale node: %w", err)
 		}
