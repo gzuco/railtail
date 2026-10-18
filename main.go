@@ -1,8 +1,8 @@
 package main
 
 import (
-	"strings"
 	"cmp"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log/slog"
@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"tailscale.com/ipn"
 	"time"
 
 	"github.com/half0wl/railtail/internal/config"
@@ -26,12 +28,12 @@ func main() {
 	}
 
 	ts := &tsnet.Server{
-		Hostname:     cfg.TSHostname,
-		AuthKey:      cfg.TSAuthKey,
-		RunWebClient: false,
-		Ephemeral:    false,
+		Hostname:      cfg.TSHostname,
+		AuthKey:       cfg.TSAuthKey,
+		RunWebClient:  false,
+		Ephemeral:     false,
 		AdvertiseTags: splitTags(cfg.TSAdvertiseTags),
-		ControlURL:   cfg.TSLoginServer,
+		ControlURL:    cfg.TSLoginServer,
 		UserLogf: func(format string, v ...any) {
 			logger.Stdout.Info(fmt.Sprintf(format, v...))
 		},
@@ -40,6 +42,19 @@ func main() {
 	if err := ts.Start(); err != nil {
 		logger.StderrWithSource.Error("failed to start tailscale network server", logger.ErrAttr(err))
 		os.Exit(1)
+	}
+	if cfg.TSAcceptRoutes != "false" {
+		// tsnet >= 1.80 no longer accepts subnet routes by default on Linux
+		// (ipn.NewPrefs: RouteAll = DefaultRouteAll(GOOS), false on linux).
+		// Without RouteAll the dialer has no peer for IPs behind a subnet
+		// router and silently falls back to the OS dialer, which times out.
+		// railtail exists to reach private networks through subnet routers,
+		// so accept routes unless explicitly disabled.
+		if err := acceptRoutes(ts); err != nil {
+			logger.StderrWithSource.Error("failed to enable accept-routes", logger.ErrAttr(err))
+			os.Exit(1)
+		}
+		logger.Stdout.Info("accept-routes enabled (RouteAll=true)")
 	}
 
 	defer ts.Close()
@@ -131,4 +146,18 @@ func splitTags(v string) []string {
 		}
 	}
 	return out
+}
+
+// acceptRoutes sets RouteAll=true on the running tsnet node (same as `tailscale up --accept-routes`).
+func acceptRoutes(ts *tsnet.Server) error {
+	lc, err := ts.LocalClient()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	mp := &ipn.MaskedPrefs{RouteAllSet: true}
+	mp.RouteAll = true
+	_, err = lc.EditPrefs(ctx, mp)
+	return err
 }

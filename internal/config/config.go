@@ -25,13 +25,14 @@ var (
 )
 
 type Config struct {
-	TSHostname     string `flag:"ts-hostname" env:"TS_HOSTNAME" usage:"hostname to use for tailscale"`
-	ListenPort     string `flag:"listen-port" env:"LISTEN_PORT" usage:"port to listen on"`
-	TargetAddr     string `flag:"target-addr" env:"TARGET_ADDR" usage:"address:port of a tailscale node to send traffic to"`
-	TSLoginServer  string `flag:"ts-login-server" env:"TS_LOGIN_SERVER" default:"" usage:"base url of the control server, If you are using Headscale for your control server, use your Headscale instance's URL"`
-	TSStateDirPath string `flag:"ts-state-dir" env:"TS_STATEDIR_PATH" default:"/tmp/railtail" usage:"tailscale state dir"`
-	TSAuthKey      string `env:"TS_AUTHKEY,TS_AUTH_KEY" usage:"tailscale auth key"`
+	TSHostname      string `flag:"ts-hostname" env:"TS_HOSTNAME" usage:"hostname to use for tailscale"`
+	ListenPort      string `flag:"listen-port" env:"LISTEN_PORT" usage:"port to listen on"`
+	TargetAddr      string `flag:"target-addr" env:"TARGET_ADDR" usage:"address:port of a tailscale node to send traffic to"`
+	TSLoginServer   string `flag:"ts-login-server" env:"TS_LOGIN_SERVER" default:"" usage:"base url of the control server, If you are using Headscale for your control server, use your Headscale instance's URL"`
+	TSStateDirPath  string `flag:"ts-state-dir" env:"TS_STATEDIR_PATH" default:"/tmp/railtail" usage:"tailscale state dir"`
+	TSAuthKey       string `env:"TS_AUTHKEY,TS_AUTH_KEY" usage:"tailscale auth key"`
 	TSAdvertiseTags string `flag:"ts-advertise-tags" env:"TS_ADVERTISE_TAGS" default:"" usage:"comma-separated tags to advertise (e.g. tag:ci); required when the auth key is an OAuth client secret"`
+	TSAcceptRoutes  string `flag:"ts-accept-routes" env:"TS_ACCEPT_ROUTES" default:"true" usage:"accept subnet routes advertised by subnet routers (needed to reach targets behind a subnet router); set to false to disable"`
 
 	ForwardTrafficType ForwardTrafficType
 }
